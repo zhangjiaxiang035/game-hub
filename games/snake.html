@@ -374,7 +374,7 @@ body {
 </div>
 
 <div class="game-wrapper">
-  <div class="board-container">
+  <div class="board-container" tabindex="0">
     <canvas id="gameCanvas" width="500" height="500"></canvas>
     <div class="pause-overlay" id="pauseOverlay">
       <div class="pause-text">⏸ 暂停</div>
@@ -770,7 +770,7 @@ body {
   }
 
   // ---------------- Keyboard events ----------------
-  document.addEventListener('keydown', function(e) {
+  window.addEventListener('keydown', function(e) {
     const key = e.key;
     // Prevent page scrolling
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(key)) {
@@ -794,6 +794,27 @@ body {
       case 'ArrowLeft':  setDirection(-1, 0); break;
       case 'ArrowRight': setDirection(1, 0);  break;
     }
+  });
+
+  // DIRECT keyboard handler - guaranteed to work
+  window.addEventListener('keydown', function(e) {
+    // Only handle our keys
+    const k = e.key;
+    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(k)) return;
+    e.preventDefault();
+
+    if (k === ' ') {
+      if (isGameOver) restartGame();
+      else togglePause();
+      return;
+    }
+
+    if (isPaused || isGameOver) return;
+
+    if (k === 'ArrowUp') setDirection(0, -1);
+    else if (k === 'ArrowDown') setDirection(0, 1);
+    else if (k === 'ArrowLeft') setDirection(-1, 0);
+    else if (k === 'ArrowRight') setDirection(1, 0);
   });
 
   // ---------------- Touch controls ----------------

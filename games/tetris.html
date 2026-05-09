@@ -483,6 +483,12 @@ body {
   let animationId = null;
   let isRunning = false;
 
+  // Clearing animation state
+  let clearingRows = [];
+  let clearingActive = false;
+  let clearingFlashWhite = false;
+  let clearingFlashCount = 0;
+
   // ---------- Initialization ----------
   function createEmptyBoard() {
     return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -549,7 +555,7 @@ body {
   }
 
   function tryRotate() {
-    if (!currentPiece || gameOver || paused) return false;
+    if (!currentPiece || gameOver || paused || clearingActive) return false;
     const oldRotation = currentPiece.rotation;
     const newRotation = (oldRotation + 1) % 4;
     const newShape = rotateShape(currentPiece.shape);
@@ -571,7 +577,7 @@ body {
 
   // ---------- Movement ----------
   function movePiece(dx, dy) {
-    if (!currentPiece || gameOver || paused) return false;
+    if (!currentPiece || gameOver || paused || clearingActive) return false;
     if (!collides(currentPiece.shape, currentPiece.x + dx, currentPiece.y + dy)) {
       currentPiece.x += dx;
       currentPiece.y += dy;
@@ -585,7 +591,7 @@ body {
   }
 
   function hardDrop() {
-    if (!currentPiece || gameOver || paused) return;
+    if (!currentPiece || gameOver || paused || clearingActive) return;
     let dropDist = 0;
     while (!collides(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
       currentPiece.y++;
@@ -621,32 +627,76 @@ body {
       }
     }
 
-    // Clear lines
-    let cleared = 0;
-    for (let row = ROWS - 1; row >= 0; ) {
+    // Detect full rows (don't clear yet)
+    const fullRows = [];
+    for (let row = 0; row < ROWS; row++) {
       if (board[row].every(cell => cell !== null)) {
-        board.splice(row, 1);
-        board.unshift(Array(COLS).fill(null));
-        cleared++;
-        // recheck same row index
-      } else {
-        row--;
+        fullRows.push(row);
       }
     }
 
-    if (cleared > 0) {
-      const points = LINE_SCORES[cleared] || 0;
-      score += points * level;
-      lines += cleared;
-      level = Math.floor(lines / 10) + 1;
-      updateUI();
+    if (fullRows.length > 0) {
+      // Start clearing animation
+      clearingRows = fullRows;
+      clearingActive = true;
+      clearingFlashWhite = false;
+      clearingFlashCount = 0;
+      render();
+      startClearingAnimation();
+      return;
     }
 
-    // Spawn next
+    // No lines cleared — spawn next piece normally
     currentPiece = spawnPiece();
     if (gameOver) return;
+    resetDropTimer();
+    render();
+  }
 
-    // Reset drop timer with new speed
+  function startClearingAnimation() {
+    let timer = null;
+
+    function doFlash() {
+      clearingFlashWhite = !clearingFlashWhite;
+      clearingFlashCount++;
+      render();
+
+      if (clearingFlashCount >= 6) {
+        // Animation complete — actually clear the rows
+        clearInterval(timer);
+        finishClearing();
+      }
+    }
+
+    timer = setInterval(doFlash, 80);
+  }
+
+  function finishClearing() {
+    const clearedRows = clearingRows.length;
+
+    // Remove full rows (sorted descending to splice correctly)
+    const sorted = [...clearingRows].sort((a, b) => b - a);
+    for (const row of sorted) {
+      board.splice(row, 1);
+      board.unshift(Array(COLS).fill(null));
+    }
+
+    // Update score
+    const points = LINE_SCORES[clearedRows.length] || 0;
+    score += points * level;
+    lines += clearedRows.length;
+    level = Math.floor(lines / 10) + 1;
+    updateUI();
+
+    // Reset animation state
+    clearingRows = [];
+    clearingActive = false;
+    clearingFlashWhite = false;
+    clearingFlashCount = 0;
+
+    // Spawn next piece
+    currentPiece = spawnPiece();
+    if (gameOver) return;
     resetDropTimer();
     render();
   }
@@ -702,6 +752,15 @@ body {
         if (color) {
           drawBlock(ctx, c, r, color, 1);
         }
+      }
+    }
+
+    // Draw clearing flash overlay
+    if (clearingActive && clearingRows.length > 0) {
+      const flashAlpha = clearingFlashWhite ? 0.8 : 0;
+      ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
+      for (const row of clearingRows) {
+        ctx.fillRect(0, row * BLOCK_SIZE, canvas.width, BLOCK_SIZE);
       }
     }
 
@@ -849,7 +908,7 @@ body {
       return;
     }
 
-    if (gameOver || paused) return;
+    if (gameOver || paused || clearingActive) return;
 
     switch (key) {
       case 'ArrowLeft':
@@ -907,13 +966,13 @@ body {
       if (!el) return;
       el.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if (gameOver || paused) return;
+        if (gameOver || paused || clearingActive) return;
         action();
         render();
       });
       el.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        if (gameOver || paused) return;
+        if (gameOver || paused || clearingActive) return;
         action();
         render();
       });
@@ -960,6 +1019,19 @@ body {
 
     // Start the game
     startGame();
+
+    // Additional direct keyboard handler (always works for arrow keys)
+    document.addEventListener('keydown', function(e) {
+      const key = e.key;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+        e.preventDefault();
+      }
+      if (key === 'ArrowUp') { tryRotate(); render(); }
+      else if (key === 'ArrowLeft') { movePiece(-1, 0); render(); }
+      else if (key === 'ArrowRight') { movePiece(1, 0); render(); }
+      else if (key === 'ArrowDown') { movePiece(0, 1); render(); resetDropTimer(); }
+      else if (key === ' ') { hardDrop(); render(); }
+    });
   }
 
   // Go
