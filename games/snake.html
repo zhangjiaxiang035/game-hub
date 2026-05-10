@@ -146,7 +146,17 @@ ndx=ndx2;ndy=ndy2;
 const a=['↑','↓','←','→'],d=[[0,-1],[0,1],[-1,0],[1,0]];
 for(let i=0;i<4;i++)if(d[i][0]===ndx2&&d[i][1]===ndy2){log('→ '+a[i]);return;}
 }
-function tp2(){if(ov)return;pa2=!pa2;pa.classList.toggle('on',pa2);log(pa2?'⏸ 暂停':'▶ 继续');}
+function tp2(){
+if(ov)return;
+pa2=!pa2;
+pa.classList.toggle('on',pa2);
+log(pa2?'⏸ 暂停':'▶ 继续');
+if(pa2){
+if(li){cancelAnimationFrame(li);li=null;}
+}else{
+li=requestAnimationFrame(loop);
+}
+}
 function loop(ts){
 if(!ru||ov){li=null;return;}
 const iv=Math.max(50,150-(lv-1)*8);
