@@ -171,12 +171,16 @@ else if(k==='ArrowLeft')sd(-1,0);
 else if(k==='ArrowRight')sd(1,0);
 });
 document.querySelectorAll('.tc-btn[data-dir]').forEach(function(b){
-b.addEventListener('click',function(){
-const d=this.dataset.dir;
+function handleDir(){
+const d=b.dataset.dir;
 if(d==='up')sd(0,-1);else if(d==='down')sd(0,1);
 else if(d==='left')sd(-1,0);else if(d==='right')sd(1,0);
+}
+b.addEventListener('click',handleDir);
+b.addEventListener('touchstart',function(e){
+e.preventDefault();
+handleDir();
 });
-b.addEventListener('touchstart',function(e){e.preventDefault();});
 });
 $('tp').addEventListener('click',function(){if(ov)sg();else tp2();});
 $('rst').addEventListener('click',sg);
