@@ -183,6 +183,7 @@ handleDir();
 });
 });
 $('tp').addEventListener('click',function(){if(ov)sg();else tp2();});
+$('tp').addEventListener('touchstart',function(e){e.preventDefault();});
 $('tp').addEventListener('touchend',function(e){e.preventDefault();if(ov)sg();else tp2();});
 $('rst').addEventListener('click',sg);
 window.addEventListener('blur',function(){if(ru&&!pa2&&!ov){pa2=1;pa.classList.add('on');log('⏸ 失焦暂停');}});
